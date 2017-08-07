@@ -39,6 +39,11 @@
 .NOTES
     This script needs to be run from a epd server using your epd priv account.
 
+    The content of LockComputer.bat should be:
+    @echo off
+    %windir%\System32\rundll32.exe user32.dll,LockWorkStation
+    exit
+
     Author: dklempfner@gmail.com
     Date: 04/07/2017
 
@@ -51,7 +56,7 @@
 Param([String]$InputFilePath = 'C:\InputFile.csv',
       [String]$OutputFilePath = 'C:\OutputFile.csv',
       [String]$CmRcViewerFilePath = 'C:\Program Files (x86)\Microsoft Configuration Manager\AdminConsole\bin\i386\CmRcViewer.exe', #This doesn't need to be changed.
-      [String]$LockComputerBatchFilePath = 'C:\GetLogonDurations\LockComputer.bat',
+      [String]$LockComputerBatchFilePath = 'C:\LockComputer.bat',
       [String]$LdapPath = 'LDAP://DC=epd,DC=def,DC=ghi,DC=au')
 
 function WriteProgress
