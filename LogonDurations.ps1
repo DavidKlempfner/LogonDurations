@@ -6,9 +6,9 @@
     This script gets the logon duration for endpoints.
 
     Pseudo-code:
-    Given a list of CECs.
-    Foreach CEC:        
-        Find all computers in AD for this CEC
+    Given a list of Sites.
+    Foreach Site:        
+        Find all computers in AD for this Site
         Randomise the list of computers from AD (this is because this script will be run multiple times a day, we want a different computer with no one logged on each time we run this script)
         Foreach computer:
             Get the currently logged on user
@@ -37,7 +37,7 @@
 .EXAMPLE    
 
 .NOTES
-    This script needs to be run from a DPE server using your DPE priv account.
+    This script needs to be run from a epd server using your epd priv account.
 
     Author: dklempfner@gmail.com
     Date: 04/07/2017
@@ -52,7 +52,7 @@ Param([String]$InputFilePath = 'C:\InputFile.csv',
       [String]$OutputFilePath = 'C:\OutputFile.csv',
       [String]$CmRcViewerFilePath = 'C:\Program Files (x86)\Microsoft Configuration Manager\AdminConsole\bin\i386\CmRcViewer.exe', #This doesn't need to be changed.
       [String]$LockComputerBatchFilePath = 'C:\GetLogonDurations\LockComputer.bat',
-      [String]$LdapPath = 'LDAP://DC=dpe,DC=def,DC=ghi,DC=au')
+      [String]$LdapPath = 'LDAP://DC=epd,DC=def,DC=ghi,DC=au')
 
 function WriteProgress
 {
@@ -108,14 +108,14 @@ function GetDirectorySearcher
     return $searcher
 }
 
-function GetAllComputersFromCec
+function GetAllComputersFromSite
 {
     param([Parameter(Mandatory=$true)][String]$LdapPath,
-          [Parameter(Mandatory=$true)][String]$Cec)
+          [Parameter(Mandatory=$true)][String]$Site)
 
     $propertiesToLoad = @('name')
     $directorySearcher = GetDirectorySearcher $LdapPath $propertiesToLoad
-    $directorySearcher.Filter = "(&(objectCategory=computer)(name=$($Cec)PWE7*))"
+    $directorySearcher.Filter = "(&(objectCategory=computer)(name=$($Site)PWE7*))"
     $results = $directorySearcher.FindAll()
     return $results
 }
@@ -177,23 +177,23 @@ function ShuffleTheResults
 
 function GetListOfComputerCustomObjects
 {
-    param([Parameter(Mandatory=$true)][Object[]]$Cecs)
+    param([Parameter(Mandatory=$true)][Object[]]$Sites)
 
     $computerCustomObjects = @()
 
-    for($i = 0; $i -lt $Cecs.Count; $i++)
+    for($i = 0; $i -lt $Sites.Count; $i++)
     {
-        $cec = $Cecs[$i].Cec
+        $site = $Sites[$i].Site
 
-        WriteProgress ($i+1) $Cecs.Count "Finding computers in $cec"
+        WriteProgress ($i+1) $Sites.Count "Finding computers in $site"
 
         $numOfComputersFoundWithNoOneLoggedOn = 0
    
-        $results = GetAllComputersFromCec $LdapPath $cec        
+        $results = GetAllComputersFromSite $LdapPath $site        
 
         if(!$results -or ($results -and $results.Count -eq 0))
         {
-            $computerCustomObjects += [PSCustomObject]@{Cec = $cec; ComputerName = ''; LogonStartTime = ''; LogonFinishTime = ''; LogonDuration = ''; WereEndpointsFoundInAdForThisCec = $false; WasAtLeastOneEndpointFoundWithNoOneLoggedOnForThisCec = $false; WasLockComputerBatchFileCopiedSuccessfully = ''; WasLockComputerBatchFileDeletedSuccessfully = ''}
+            $computerCustomObjects += [PSCustomObject]@{Site = $site; ComputerName = ''; LogonStartTime = ''; LogonFinishTime = ''; LogonDuration = ''; WereEndpointsFoundInAdForThisSite = $false; WasAtLeastOneEndpointFoundWithNoOneLoggedOnForThisSite = $false; WasLockComputerBatchFileCopiedSuccessfully = ''; WasLockComputerBatchFileDeletedSuccessfully = ''}
         }
         else
         {
@@ -201,7 +201,7 @@ function GetListOfComputerCustomObjects
             $wasAComputerFoundWithNoOneLoggedOn = $false
             for($j = 0; $j -lt $results.Count; $j++)
             {                        
-                WriteProgress ($j+1) $results.Count "Finding computers with no one logged on at $cec"
+                WriteProgress ($j+1) $results.Count "Finding computers with no one logged on at $site"
 
                 $result = $results[$j]
 
@@ -212,7 +212,7 @@ function GetListOfComputerCustomObjects
                     if($isNoOneLoggedOn)
                     {
                         $wasAComputerFoundWithNoOneLoggedOn = $true
-                        $customObject = [PSCustomObject]@{Cec = $cec; ComputerName = $computerName; LogonStartTime = ''; LogonFinishTime = ''; LogonDuration = ''; WereEndpointsFoundInAdForThisCec = $true; WasAtLeastOneEndpointFoundWithNoOneLoggedOnForThisCec = $true; WasLockComputerBatchFileCopiedSuccessfully = ''; WasLockComputerBatchFileDeletedSuccessfully = ''}
+                        $customObject = [PSCustomObject]@{Site = $site; ComputerName = $computerName; LogonStartTime = ''; LogonFinishTime = ''; LogonDuration = ''; WereEndpointsFoundInAdForThisSite = $true; WasAtLeastOneEndpointFoundWithNoOneLoggedOnForThisSite = $true; WasLockComputerBatchFileCopiedSuccessfully = ''; WasLockComputerBatchFileDeletedSuccessfully = ''}
                         $computerCustomObjects += $customObject
                         break
                     }
@@ -220,7 +220,7 @@ function GetListOfComputerCustomObjects
             }
             if(!$wasAComputerFoundWithNoOneLoggedOn)
             {
-                $computerCustomObjects += [PSCustomObject]@{Cec = $cec; ComputerName = ''; LogonStartTime = ''; LogonFinishTime = ''; LogonDuration = ''; WereEndpointsFoundInAdForThisCec = $true; WasAtLeastOneEndpointFoundWithNoOneLoggedOnForThisCec = $false; WasLockComputerBatchFileCopiedSuccessfully = ''; WasLockComputerBatchFileDeletedSuccessfully = ''}
+                $computerCustomObjects += [PSCustomObject]@{Site = $site; ComputerName = ''; LogonStartTime = ''; LogonFinishTime = ''; LogonDuration = ''; WereEndpointsFoundInAdForThisSite = $true; WasAtLeastOneEndpointFoundWithNoOneLoggedOnForThisSite = $false; WasLockComputerBatchFileCopiedSuccessfully = ''; WasLockComputerBatchFileDeletedSuccessfully = ''}
             }
         }
     }
@@ -401,11 +401,11 @@ try
 
     ValidateInputFilePath $LockComputerBatchFilePath '.bat'
 
-    $cecs = @(Import-Csv $InputFilePath)
+    $sites = @(Import-Csv $InputFilePath)
 
-    $computerCustomObjects = GetListOfComputerCustomObjects $cecs
+    $computerCustomObjects = GetListOfComputerCustomObjects $sites
     
-    $computersWithNoOneLoggedOn = $computerCustomObjects | Where-Object { $_.WasAtLeastOneEndpointFoundWithNoOneLoggedOnForThisCec -eq $true }
+    $computersWithNoOneLoggedOn = $computerCustomObjects | Where-Object { $_.WasAtLeastOneEndpointFoundWithNoOneLoggedOnForThisSite -eq $true }
 
     if($computersWithNoOneLoggedOn)
     {
@@ -423,7 +423,7 @@ try
     }
     else
     {
-        Write-Warning 'For all CECs, either no endpoints were found in AD, or there were endpoints in AD but all of them had someone logged on.'
+        Write-Warning 'For all Sites, either no endpoints were found in AD, or there were endpoints in AD but all of them had someone logged on.'
     }
 }
 catch
